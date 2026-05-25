@@ -2,8 +2,8 @@
 // Created by hyl00 on 2026/5/24.
 //
 
-#ifndef MY_MAIN_H
-#define MY_MAIN_H
+#ifndef CAR_MAIN_HPP
+#define CAR_MAIN_HPP
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,4 +15,4 @@ void my_main(void);
 }
 #endif
 
-#endif //MY_MAIN_H
+#endif

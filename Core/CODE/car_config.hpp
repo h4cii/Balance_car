@@ -1,5 +1,5 @@
-#ifndef BALANCE_CONFIG_H
-#define BALANCE_CONFIG_H
+#ifndef CAR_CONFIG_HPP
+#define CAR_CONFIG_HPP
 
 /* Hardware and controller parameters match the WHEELTEC B570 reference car. */
 
