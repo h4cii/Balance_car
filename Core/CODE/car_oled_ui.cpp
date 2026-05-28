@@ -54,6 +54,12 @@ uint8_t batteryPercent(uint16_t centivolts)
 
 void showVoltage(u8 y, uint16_t centivolts)
 {
+    if (centivolts == 0U) {
+        OLED_ShowString(0, y, "V");
+        OLED_ShowString(19, y, "--.--");
+        OLED_ShowString(64, y, "V");
+        return;
+    }
     if (centivolts > 9999U) {
         centivolts = 9999U;
     }

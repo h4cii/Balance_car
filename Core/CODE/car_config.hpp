@@ -29,9 +29,10 @@
 #define BALANCE_RATIO_ACCEL            5948.0f
 
 /* Reference car uses a 12 V battery divided by 11 before ADC. */
+#define BALANCE_ENABLE_BATTERY_MONITOR 0
 #define BALANCE_BATTERY_DIVIDER        11.0f
 #define BALANCE_BATTERY_LOW_CV         1000
-#define BALANCE_ENABLE_BATTERY_PROTECTION 1
+#define BALANCE_ENABLE_BATTERY_PROTECTION 0
 
 #define BALANCE_TILT_LIMIT_DEG         40.0f
 
