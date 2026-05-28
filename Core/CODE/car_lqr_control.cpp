@@ -35,8 +35,8 @@ LqrState LqrController::update(int16_t left_counts, int16_t right_counts, float 
     const float wheel_circ_m = BALANCE_PI * BALANCE_WHEEL_DIAMETER_MM / 1000.0f;
     const float track_m = BALANCE_WHEEL_SPACING_MM / 1000.0f;
     const float average_counts = ((float)left_counts + (float)right_counts) * 0.5f;
-    const float diff_counts = (float)right_counts - (float)left_counts;
-
+    // const float diff_counts = (float)right_counts - (float)left_counts;
+    const float diff_counts = (float)left_counts - (float)right_counts;
     state_.x_speed_mps = average_counts * wheel_circ_m * BALANCE_CONTROL_FREQUENCY_HZ /
                          BALANCE_ENCODER_COUNTS_PER_REV;
     state_.x_pose_m += state_.x_speed_mps * BALANCE_SAMPLE_PERIOD_S;

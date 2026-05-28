@@ -15,17 +15,22 @@
 #define BALANCE_ENCODER_COUNTS_PER_REV \
     (BALANCE_ENCODER_MULTIPLES * BALANCE_ENCODER_PRECISION * BALANCE_REDUCTION_RATIO)
 
-#define BALANCE_PWM_MAX                6900
+#define BALANCE_PWM_MAX                3500
 #define BALANCE_PWM_PERIOD             7199
 
 /* Reference LQR coefficients. */
-#define BALANCE_LQR_K1                (-77.4597f)
-#define BALANCE_LQR_K2                (-113.9570f)
-#define BALANCE_LQR_K3                (-357.2249f)
-#define BALANCE_LQR_K4                (-33.3211f)
+// #define BALANCE_LQR_K1                (-77.4597f)
+// #define BALANCE_LQR_K2                (-113.9570f)
+// #define BALANCE_LQR_K3                (-357.2249f)
+// #define BALANCE_LQR_K4                (-33.3211f)
+#define BALANCE_LQR_K1                (-360.0f)
+#define BALANCE_LQR_K2                (-220.9570f)
+#define BALANCE_LQR_K3                (-500.2249f)
+#define BALANCE_LQR_K4                (-49.3211f)
 #define BALANCE_LQR_K5                 22.3607f
 #define BALANCE_LQR_K6                 22.8301f
-#define BALANCE_TARGET_ANGLE_RAD       0.0349f
+// #define BALANCE_TARGET_ANGLE_RAD       0.0349
+#define BALANCE_TARGET_ANGLE_RAD       0.050f
 #define BALANCE_RATIO_ACCEL            5948.0f
 
 /* Reference car uses a 12 V battery divided by 11 before ADC. */
@@ -37,10 +42,10 @@
 #define BALANCE_TILT_LIMIT_DEG         40.0f
 
 /* Keep these as the first tuning knobs during bring-up. */
-#define BALANCE_LEFT_ENCODER_SIGN      (-1)
-#define BALANCE_RIGHT_ENCODER_SIGN     (-1)
-#define BALANCE_LEFT_MOTOR_SIGN        (1)
-#define BALANCE_RIGHT_MOTOR_SIGN       (1)
+#define BALANCE_LEFT_ENCODER_SIGN      (1)
+#define BALANCE_RIGHT_ENCODER_SIGN     (1)
+#define BALANCE_LEFT_MOTOR_SIGN        (-1)
+#define BALANCE_RIGHT_MOTOR_SIGN       (-1)
 
 #define BALANCE_REMOTE_SPEED_SLOW_MPS  0.30f
 #define BALANCE_REMOTE_SPEED_FAST_MPS  0.60f

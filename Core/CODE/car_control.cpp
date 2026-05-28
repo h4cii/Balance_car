@@ -128,7 +128,14 @@ void BalanceController::handleImuInterrupt()
         stopWithReason(StopReason::lowBattery);
     }
 #endif
-
+    if (!state_.enabled) {
+        motor.stop();
+        state_.pwm_left = 0;
+        state_.pwm_right = 0;
+        lqr.resetPose();
+        state_.control_ticks++;
+        return;
+    }
     applyControlTarget();
     const LqrState lqr_state = lqr.update(counts.left_counts, counts.right_counts, state_.pitch_rad);
     state_.angle_rate_rads = lqr_state.angle_rate_rads;
