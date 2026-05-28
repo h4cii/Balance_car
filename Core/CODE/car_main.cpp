@@ -1,5 +1,6 @@
 #include "car_main.hpp"
 
+#include "car_app_scheduler.hpp"
 #include "car_battery.hpp"
 #include "car_config.hpp"
 #include "car_control.hpp"
@@ -16,12 +17,15 @@
 
 #define CAR_APP_ENABLE_OLED_UI     1
 #define CAR_APP_ENABLE_BATTERY     0
-#define CAR_APP_ENABLE_MPU6050     0
-#define CAR_APP_ENABLE_ENCODER     0
-#define CAR_APP_ENABLE_MOTOR       0
+#define CAR_APP_ENABLE_MPU6050     1
+#define CAR_APP_ENABLE_ENCODER     1
+#define CAR_APP_ENABLE_MOTOR       1
+#define CAR_APP_ENABLE_MOTOR_TEST  0
 #define CAR_APP_ENABLE_ULTRASONIC  0
 #define CAR_APP_ENABLE_REMOTE      0
 #define CAR_APP_ENABLE_CONTROLLER  0
+
+#define CAR_APP_MOTOR_TEST_PWM     1000
 
 namespace {
 
@@ -53,6 +57,12 @@ void initModules(AppRuntime &app)
 
 #if CAR_APP_ENABLE_MOTOR
     car::motor.init();
+#if CAR_APP_ENABLE_MOTOR_TEST && !CAR_APP_ENABLE_CONTROLLER
+    car::motor.set(CAR_APP_MOTOR_TEST_PWM, CAR_APP_MOTOR_TEST_PWM);
+    app.ui.enabled = true;
+    app.ui.pwm_left = CAR_APP_MOTOR_TEST_PWM;
+    app.ui.pwm_right = CAR_APP_MOTOR_TEST_PWM;
+#endif
 #endif
 
 #if CAR_APP_ENABLE_ENCODER
@@ -99,12 +109,17 @@ void updateStandaloneData(AppRuntime &app)
 #endif
 
 #if CAR_APP_ENABLE_MPU6050
-    if (app.ui.mpu_ok && ((now - app.last_mpu_ms) >= 10U)) {
+    if (app.ui.mpu_ok) {
         car::Mpu6050Sample sample {};
         if (car::mpu6050.read(sample)) {
+            float dt_s = BALANCE_SAMPLE_PERIOD_S;
+            if (app.last_mpu_ms != 0U) {
+                dt_s = (float)(now - app.last_mpu_ms) / 1000.0f;
+            }
             const float pitch_rad = car::pitch_kalman.update(sample.accel_mps2[1],
                                                              sample.accel_mps2[2],
-                                                             sample.gyro_rads[0]);
+                                                             sample.gyro_rads[0],
+                                                             dt_s);
             app.ui.pitch_deg_x10 = pitchDegX10(pitch_rad);
         } else {
             app.ui.mpu_ok = false;
@@ -114,7 +129,7 @@ void updateStandaloneData(AppRuntime &app)
 #endif
 
 #if CAR_APP_ENABLE_ENCODER
-    if ((now - app.last_encoder_ms) >= 100U) {
+    if ((now - app.last_encoder_ms) >= 50U) {
         const car::EncoderCounts counts = car::encoder.read();
         app.ui.encoder_left = counts.left_counts;
         app.ui.encoder_right = counts.right_counts;
@@ -123,7 +138,7 @@ void updateStandaloneData(AppRuntime &app)
 #endif
 
 #if CAR_APP_ENABLE_ULTRASONIC
-    if ((now - app.last_ultrasonic_ms) >= 100U) {
+    if (car::app_scheduler.takeUltrasonicTick()) {
         car::ultrasonic.trigger();
         app.last_ultrasonic_ms = now;
     }
@@ -155,12 +170,17 @@ extern "C" void my_main(void)
     AppRuntime app {};
 
     initModules(app);
+    car::app_scheduler.start();
 
     for (;;) {
-        updateControllerData(app);
+        if (car::app_scheduler.takeImuTick()) {
+            updateControllerData(app);
+        }
 #if CAR_APP_ENABLE_OLED_UI
-        car::oled_ui_demo.update(app.ui);
+        if (car::app_scheduler.takeOledTick()) {
+            car::oled_ui_demo.update(app.ui);
+        }
 #endif
-        HAL_Delay(50U);
+        HAL_Delay(1U);
     }
 }

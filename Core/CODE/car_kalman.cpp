@@ -5,9 +5,10 @@
 #include "car_config.hpp"
 
 namespace {
-constexpr float KALMAN_Q_ANGLE = 1.0e-10f;
-constexpr float KALMAN_Q_BIAS = 1.0e-10f;
-constexpr float KALMAN_R_MEASURE = 1.0e-4f;
+constexpr float KALMAN_Q_ANGLE = 0.001f;
+constexpr float KALMAN_Q_BIAS = 0.003f;
+constexpr float KALMAN_R_MEASURE = 0.5f;
+constexpr uint16_t GYRO_BIAS_SAMPLE_COUNT = 100U;
 }  // namespace
 
 namespace car {
@@ -45,10 +46,10 @@ float KalmanFilter::updateState(KalmanState &filter,
     filter.angle += dt_s * rate;
 
     const float p00_minus = filter.p00 - dt_s * (filter.p10 + filter.p01) +
-                            (dt_s * dt_s) * filter.p11 + KALMAN_Q_ANGLE;
+                            (dt_s * dt_s) * filter.p11 + (KALMAN_Q_ANGLE * dt_s);
     const float p01_minus = filter.p01 - dt_s * filter.p11;
     const float p10_minus = filter.p10 - dt_s * filter.p11;
-    const float p11_minus = filter.p11 + KALMAN_Q_BIAS;
+    const float p11_minus = filter.p11 + (KALMAN_Q_BIAS * dt_s);
 
     const float s = p00_minus + KALMAN_R_MEASURE;
     const float k0 = p00_minus / s;
@@ -66,17 +67,40 @@ float KalmanFilter::updateState(KalmanState &filter,
     return filter.angle;
 }
 
-float PitchKalmanFilter::update(float accel_y_mps2, float accel_z_mps2, float gyro_x_rad_s)
+float PitchKalmanFilter::update(float accel_y_mps2, float accel_z_mps2, float gyro_x_rad_s, float dt_s)
 {
     const float accel_angle = atan2f(-accel_y_mps2, accel_z_mps2);
 
     if (!initialized_) {
         filter_.init();
         filter_.setAngle(accel_angle);
+        angle_rad_ = accel_angle;
         initialized_ = true;
     }
 
-    return filter_.update(accel_angle, -gyro_x_rad_s, BALANCE_SAMPLE_PERIOD_S);
+    if (dt_s < 0.001f) {
+        dt_s = 0.001f;
+    } else if (dt_s > 0.05f) {
+        dt_s = 0.05f;
+    }
+
+    const float gyro_rate = -gyro_x_rad_s;
+    if (!gyro_bias_ready_) {
+        gyro_bias_sum_ += gyro_rate;
+        gyro_bias_samples_++;
+        angle_rad_ = (0.65f * angle_rad_) + (0.35f * accel_angle);
+        if (gyro_bias_samples_ >= GYRO_BIAS_SAMPLE_COUNT) {
+            gyro_bias_rad_s_ = gyro_bias_sum_ / (float)gyro_bias_samples_;
+            gyro_bias_ready_ = true;
+            filter_.init();
+            filter_.setAngle(angle_rad_);
+        }
+        return angle_rad_;
+    }
+
+    const float corrected_gyro = gyro_rate - gyro_bias_rad_s_;
+    angle_rad_ = filter_.update(accel_angle, corrected_gyro, dt_s);
+    return angle_rad_;
 }
 
 }  // namespace car

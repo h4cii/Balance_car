@@ -14,7 +14,11 @@ void BalanceController::init()
     HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
     __HAL_GPIO_EXTI_CLEAR_IT(MPU6050_INT_Pin);
 
+#if BALANCE_ENABLE_BATTERY_MONITOR
     state_.battery_centivolts = battery.readCentivolts();
+#else
+    state_.battery_centivolts = 0U;
+#endif
     state_.mpu_whoami = mpu6050.readWhoAmI();
     state_.mpu_ok = (state_.mpu_whoami == 0x68U);
     if (!state_.mpu_ok) {
@@ -101,11 +105,18 @@ void BalanceController::handleImuInterrupt()
         return;
     }
 
-    state_.pitch_rad = pitch_kalman.update(sample.accel_mps2[1], sample.accel_mps2[2], sample.gyro_rads[0]);
+    state_.pitch_rad = pitch_kalman.update(sample.accel_mps2[1],
+                                           sample.accel_mps2[2],
+                                           sample.gyro_rads[0],
+                                           BALANCE_SAMPLE_PERIOD_S);
     state_.pitch_deg = state_.pitch_rad * 180.0f / BALANCE_PI;
 
     if ((state_.control_ticks % 10U) == 0U) {
+#if BALANCE_ENABLE_BATTERY_MONITOR
         state_.battery_centivolts = battery.readCentivolts();
+#else
+        state_.battery_centivolts = 0U;
+#endif
         state_.ultrasonic_mm = ultrasonic.distanceMm();
     }
 

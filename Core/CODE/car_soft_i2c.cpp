@@ -10,6 +10,8 @@ void SoftI2cBus::init()
 {
     GPIO_InitTypeDef gpio = {};
 
+    micro_timer.init();
+
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
     gpio.Pin = IIC_SCL_Pin | IIC_SDA_Pin;

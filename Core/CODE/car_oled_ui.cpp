@@ -238,14 +238,13 @@ void OledUiDemo::render(const OledUiData &data)
     showDots(68, 29, frame_);
     // drawPulse(94, 34, frame_);
 
-    OLED_ShowString(4, 42, "L");
-    showSignedNumber(14, 22, 42, data.pwm_left, 4);
-    OLED_ShowString(64, 42, "R");
-    showSignedNumber(74, 82, 42, data.pwm_right, 4);
+    OLED_ShowString(4, 42, "PWM");
+    showSignedNumber(36, 44, 42, data.pwm_left, 4);
+    showSignedNumber(84, 92, 42, data.pwm_right, 4);
 
-    showVoltage(52, data.battery_centivolts);
-    drawBatteryIcon(76, 53, batteryPercent(data.battery_centivolts), frame_);
-    showRunState(104, 52, data.enabled);
+    OLED_ShowString(4, 52, "ENC");
+    showSignedNumber(36, 44, 52, data.encoder_left, 4);
+    showSignedNumber(84, 92, 52, data.encoder_right, 4);
 
     OLED_Refresh_Gram();
 }
