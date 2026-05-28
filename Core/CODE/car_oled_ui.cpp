@@ -225,12 +225,12 @@ void OledUiDemo::render(const OledUiData &data)
 
     OLED_ShowString(4, 17, "ANG");
     showPitch(17, data.pitch_deg_x10);
-    drawAttitudeIcon(105, 27, data.pitch_deg_x10, frame_);
+    drawAttitudeIcon(112, 27, data.pitch_deg_x10, frame_);
 
     OLED_ShowString(4, 29, "STA");
     OLED_ShowString(32, 29, data.enabled ? "RUN " : "STOP");
     showDots(68, 29, frame_);
-    drawPulse(94, 34, frame_);
+    // drawPulse(94, 34, frame_);
 
     OLED_ShowString(4, 42, "L");
     showSignedNumber(14, 22, 42, data.pwm_left, 4);
