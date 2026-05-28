@@ -1,19 +1,5 @@
 #include "car_control.hpp"
 
-#include <math.h>
-
-#include "car_battery.hpp"
-#include "car_config.hpp"
-#include "car_encoder.hpp"
-#include "car_kalman.hpp"
-#include "car_lqr_control.hpp"
-#include "car_motor.hpp"
-#include "car_mpu6050_raw.hpp"
-#include "car_remote_control.hpp"
-#include "car_status_display.hpp"
-#include "car_time.hpp"
-#include "car_ultrasonic.hpp"
-#include "main.h"
 
 namespace car {
 
@@ -28,19 +14,9 @@ void BalanceController::init()
     HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
     __HAL_GPIO_EXTI_CLEAR_IT(MPU6050_INT_Pin);
 
-    micro_timer.init();
-    motor.init();
-    encoder.init();
-    battery.init();
-    lqr.init();
-    mpu6050.busInit();
-    ultrasonic.init();
-    remote.init();
-    status_display.init();
-
     state_.battery_centivolts = battery.readCentivolts();
     state_.mpu_whoami = mpu6050.readWhoAmI();
-    state_.mpu_ok = mpu6050.init();
+    state_.mpu_ok = (state_.mpu_whoami == 0x68U);
     if (!state_.mpu_ok) {
         stopWithReason(StopReason::mpuError);
     }
@@ -104,7 +80,6 @@ void BalanceController::poll()
         last_ultrasonic_ms_ = now;
     }
 
-    status_display.update();
     HAL_Delay(5U);
 }
 

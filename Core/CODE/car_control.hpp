@@ -2,7 +2,19 @@
 #define CAR_CONTROL_HPP
 
 #include <stdint.h>
+#include <math.h>
 
+#include "car_battery.hpp"
+#include "car_config.hpp"
+#include "car_encoder.hpp"
+#include "car_kalman.hpp"
+#include "car_lqr_control.hpp"
+#include "car_motor.hpp"
+#include "car_mpu6050_raw.hpp"
+#include "car_remote_control.hpp"
+#include "car_time.hpp"
+#include "car_ultrasonic.hpp"
+#include "main.h"
 namespace car {
 
 enum class BalanceMode : uint8_t {
