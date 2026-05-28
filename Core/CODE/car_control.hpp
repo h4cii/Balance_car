@@ -46,6 +46,7 @@ struct BalanceState {
     float yaw_rad = 0.0f;
     float yaw_rate_rads = 0.0f;
     uint16_t ultrasonic_mm = 0U;
+    bool ultrasonic_valid = false;
     uint16_t battery_centivolts = 0U;
     int16_t encoder_left = 0;
     int16_t encoder_right = 0;
@@ -62,16 +63,23 @@ public:
     void setEnabled(bool enabled);
     void toggleEnabled();
     void setMode(BalanceMode mode);
+    void cycleMode();
     void setRemoteTarget(float speed_mps, float yaw_rate_rads, uint8_t last_byte);
     BalanceState state();
 
 private:
     void stopWithReason(StopReason reason);
+    void refreshUltrasonicState();
     void applyControlTarget();
 
     BalanceState state_ {};
     float remote_speed_target_mps_ = 0.0f;
     float remote_yaw_target_rads_ = 0.0f;
+    float ultrasonic_filtered_mm_ = 0.0f;
+    float ultrasonic_auto_speed_mps_ = 0.0f;
+    bool ultrasonic_filter_ready_ = false;
+    bool ultrasonic_avoid_active_ = false;
+    bool ultrasonic_auto_paused_ = false;
     bool last_key_ = true;
     uint32_t last_toggle_ms_ = 0U;
     uint32_t last_ultrasonic_ms_ = 0U;

@@ -5,6 +5,76 @@ namespace car {
 
 BalanceController controller;
 
+namespace {
+
+float clampFloat(float value, float min_value, float max_value)
+{
+    if (value < min_value) {
+        return min_value;
+    }
+    if (value > max_value) {
+        return max_value;
+    }
+    return value;
+}
+
+float moveToward(float value, float target, float step)
+{
+    if (value < target) {
+        return ((target - value) > step) ? (value + step) : target;
+    }
+    if (value > target) {
+        return ((value - target) > step) ? (value - step) : target;
+    }
+    return value;
+}
+
+float smoothStep(float value)
+{
+    const float x = clampFloat(value, 0.0f, 1.0f);
+    return x * x * (3.0f - 2.0f * x);
+}
+
+bool isStopByte(uint8_t byte)
+{
+    return (byte == 'Z') || (byte == 'z') || (byte == 0x00U);
+}
+
+bool hasManualSpeed(float speed_mps)
+{
+    return fabsf(speed_mps) > 0.001f;
+}
+
+float followSpeedFromDistance(uint16_t distance_mm)
+{
+    if (distance_mm > BALANCE_ULTRASONIC_FOLLOW_FAR_MM) {
+        return 0.0f;
+    }
+
+    const float error_mm = (float)distance_mm -
+                           (float)BALANCE_ULTRASONIC_FOLLOW_TARGET_MM;
+    const float deadband_mm = (float)BALANCE_ULTRASONIC_FOLLOW_DEADBAND_MM;
+    if (fabsf(error_mm) <= deadband_mm) {
+        return 0.0f;
+    }
+
+    if (error_mm > 0.0f) {
+        const float range_mm = (float)BALANCE_ULTRASONIC_FOLLOW_FAR_MM -
+                               (float)BALANCE_ULTRASONIC_FOLLOW_TARGET_MM -
+                               deadband_mm;
+        const float ratio = (error_mm - deadband_mm) / clampFloat(range_mm, 1.0f, 10000.0f);
+        return BALANCE_ULTRASONIC_FOLLOW_FORWARD_MAX_MPS * smoothStep(ratio);
+    }
+
+    const float range_mm = (float)BALANCE_ULTRASONIC_FOLLOW_TARGET_MM -
+                           (float)BALANCE_ULTRASONIC_FOLLOW_NEAR_MM -
+                           deadband_mm;
+    const float ratio = (-error_mm - deadband_mm) / clampFloat(range_mm, 1.0f, 10000.0f);
+    return -BALANCE_ULTRASONIC_FOLLOW_REVERSE_MAX_MPS * smoothStep(ratio);
+}
+
+}  // namespace
+
 void BalanceController::init()
 {
     state_ = {};
@@ -57,7 +127,25 @@ void BalanceController::toggleEnabled()
 void BalanceController::setMode(BalanceMode mode)
 {
     state_.mode = mode;
+    ultrasonic_auto_speed_mps_ = 0.0f;
+    ultrasonic_avoid_active_ = false;
+    ultrasonic_auto_paused_ = false;
     lqr.resetPose();
+}
+
+void BalanceController::cycleMode()
+{
+    switch (state_.mode) {
+    case BalanceMode::normal:
+        setMode(BalanceMode::ultrasonicAvoid);
+        break;
+    case BalanceMode::ultrasonicAvoid:
+        setMode(BalanceMode::ultrasonicFollow);
+        break;
+    default:
+        setMode(BalanceMode::normal);
+        break;
+    }
 }
 
 void BalanceController::setRemoteTarget(float speed_mps, float yaw_rate_rads, uint8_t last_byte)
@@ -65,6 +153,12 @@ void BalanceController::setRemoteTarget(float speed_mps, float yaw_rate_rads, ui
     remote_speed_target_mps_ = speed_mps;
     remote_yaw_target_rads_ = yaw_rate_rads;
     state_.remote_last_byte = last_byte;
+    if (isStopByte(last_byte)) {
+        ultrasonic_auto_paused_ = true;
+        ultrasonic_auto_speed_mps_ = 0.0f;
+    } else if ((speed_mps != 0.0f) || (yaw_rate_rads != 0.0f)) {
+        ultrasonic_auto_paused_ = false;
+    }
 }
 
 void BalanceController::poll()
@@ -80,7 +174,7 @@ void BalanceController::poll()
 
     if ((now - last_ultrasonic_ms_) >= 80U) {
         ultrasonic.trigger();
-        state_.ultrasonic_mm = ultrasonic.distanceMm();
+        refreshUltrasonicState();
         last_ultrasonic_ms_ = now;
     }
 
@@ -117,7 +211,7 @@ void BalanceController::handleImuInterrupt()
 #else
         state_.battery_centivolts = 0U;
 #endif
-        state_.ultrasonic_mm = ultrasonic.distanceMm();
+        refreshUltrasonicState();
     }
 
     if (fabsf(state_.pitch_deg) > BALANCE_TILT_LIMIT_DEG) {
@@ -169,32 +263,86 @@ void BalanceController::stopWithReason(StopReason reason)
     state_.stop_reason = reason;
     remote_speed_target_mps_ = 0.0f;
     remote_yaw_target_rads_ = 0.0f;
+    ultrasonic_auto_speed_mps_ = 0.0f;
+    ultrasonic_avoid_active_ = false;
+    ultrasonic_auto_paused_ = false;
     lqr.setTarget(0.0f, 0.0f);
     lqr.resetPose();
     motor.stop();
+}
+
+void BalanceController::refreshUltrasonicState()
+{
+    const uint32_t now = HAL_GetTick();
+    const bool valid = ultrasonic.hasFreshDistance(now);
+    if (valid) {
+        const float raw_mm = (float)ultrasonic.distanceMm();
+        if (!ultrasonic_filter_ready_) {
+            ultrasonic_filtered_mm_ = raw_mm;
+            ultrasonic_filter_ready_ = true;
+        } else {
+            ultrasonic_filtered_mm_ += (raw_mm - ultrasonic_filtered_mm_) *
+                                       BALANCE_ULTRASONIC_FILTER_ALPHA;
+        }
+        state_.ultrasonic_mm = (uint16_t)(ultrasonic_filtered_mm_ + 0.5f);
+    } else {
+        ultrasonic_filter_ready_ = false;
+        state_.ultrasonic_mm = 0U;
+    }
+    state_.ultrasonic_valid = valid;
 }
 
 void BalanceController::applyControlTarget()
 {
     float speed = remote_speed_target_mps_;
     float yaw_rate = remote_yaw_target_rads_;
+    const bool manual_speed = hasManualSpeed(remote_speed_target_mps_);
+    bool ultrasonic_auto = false;
 
     if (state_.mode == BalanceMode::ultrasonicAvoid) {
-        if ((state_.ultrasonic_mm > 0U) && (state_.ultrasonic_mm < BALANCE_ULTRASONIC_AVOID_MM)) {
-            speed = -BALANCE_REMOTE_SPEED_SLOW_MPS;
-            yaw_rate = 0.0f;
+        yaw_rate *= BALANCE_ULTRASONIC_FOLLOW_YAW_SCALE;
+        if (!state_.ultrasonic_valid) {
+            ultrasonic_avoid_active_ = false;
+        } else if (state_.ultrasonic_mm < BALANCE_ULTRASONIC_AVOID_MM) {
+            ultrasonic_avoid_active_ = true;
+        } else if (state_.ultrasonic_mm > BALANCE_ULTRASONIC_AVOID_RELEASE_MM) {
+            ultrasonic_avoid_active_ = false;
+        }
+
+        if (ultrasonic_avoid_active_) {
+            const float error_mm = (float)BALANCE_ULTRASONIC_AVOID_RELEASE_MM -
+                                   (float)state_.ultrasonic_mm;
+            const float auto_speed = -clampFloat(error_mm * BALANCE_ULTRASONIC_AVOID_SPEED_GAIN_MPS_PER_MM,
+                                                 0.0f,
+                                                 BALANCE_ULTRASONIC_AUTO_SPEED_MAX_MPS);
+            if (manual_speed && (remote_speed_target_mps_ < 0.0f)) {
+                speed = remote_speed_target_mps_ * BALANCE_ULTRASONIC_MANUAL_SPEED_SCALE;
+            } else {
+                speed = auto_speed;
+                ultrasonic_auto = true;
+            }
+        } else if (manual_speed) {
+            speed = remote_speed_target_mps_ * BALANCE_ULTRASONIC_MANUAL_SPEED_SCALE;
         }
     } else if (state_.mode == BalanceMode::ultrasonicFollow) {
-        if ((state_.ultrasonic_mm > BALANCE_ULTRASONIC_FOLLOW_FAR_MM) &&
-            (state_.ultrasonic_mm < 1500U)) {
-            speed = BALANCE_REMOTE_SPEED_SLOW_MPS;
-        } else if ((state_.ultrasonic_mm > 0U) &&
-                   (state_.ultrasonic_mm < BALANCE_ULTRASONIC_FOLLOW_NEAR_MM)) {
-            speed = -BALANCE_REMOTE_SPEED_SLOW_MPS;
-        } else {
+        yaw_rate *= BALANCE_ULTRASONIC_FOLLOW_YAW_SCALE;
+        if (manual_speed) {
+            speed = remote_speed_target_mps_ * BALANCE_ULTRASONIC_MANUAL_SPEED_SCALE;
+        } else if (ultrasonic_auto_paused_ || !state_.ultrasonic_valid) {
             speed = 0.0f;
+            ultrasonic_auto = true;
+        } else {
+            speed = followSpeedFromDistance(state_.ultrasonic_mm);
+            ultrasonic_auto = true;
         }
-        yaw_rate = 0.0f;
+    }
+
+    if (ultrasonic_auto) {
+        const float step = BALANCE_ULTRASONIC_SPEED_SLEW_MPS2 * BALANCE_SAMPLE_PERIOD_S;
+        ultrasonic_auto_speed_mps_ = moveToward(ultrasonic_auto_speed_mps_, speed, step);
+        speed = ultrasonic_auto_speed_mps_;
+    } else {
+        ultrasonic_auto_speed_mps_ = speed;
     }
 
     lqr.setTarget(speed, yaw_rate);
@@ -206,5 +354,7 @@ extern "C" void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     if (GPIO_Pin == MPU6050_INT_Pin) {
         car::controller.handleImuInterrupt();
+    } else if ((GPIO_Pin == UltrasonicCapture_Pin) || (GPIO_Pin == UltrasonicCaptureAlt_Pin)) {
+        car::ultrasonic.onEchoEdge(GPIO_Pin);
     }
 }

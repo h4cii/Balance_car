@@ -14,6 +14,9 @@ struct OledUiData {
     int16_t pwm_right = 0;
     int16_t encoder_left = 0;
     int16_t encoder_right = 0;
+    uint16_t ultrasonic_mm = 0U;
+    bool ultrasonic_valid = false;
+    uint8_t mode = 0U;
 };
 
 class OledUiDemo final {

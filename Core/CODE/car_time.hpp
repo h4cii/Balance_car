@@ -9,6 +9,8 @@ class MicrosecondTimer final {
 public:
     void init();
     void delayUs(uint32_t us) const;
+    uint32_t ticks() const;
+    uint32_t ticksToUs(uint32_t ticks) const;
 
 private:
     static constexpr uint32_t DWT_CTRL = 0xE0001000UL;

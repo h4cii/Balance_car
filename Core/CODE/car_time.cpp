@@ -30,4 +30,17 @@ void MicrosecondTimer::delayUs(uint32_t us) const
     }
 }
 
+uint32_t MicrosecondTimer::ticks() const
+{
+    return reg(DWT_CYCCNT);
+}
+
+uint32_t MicrosecondTimer::ticksToUs(uint32_t ticks) const
+{
+    if (cycles_per_us_ == 0U) {
+        return ticks;
+    }
+    return ticks / cycles_per_us_;
+}
+
 }  // namespace car

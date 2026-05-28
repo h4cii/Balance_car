@@ -39,7 +39,13 @@ LqrState LqrController::update(int16_t left_counts, int16_t right_counts, float 
     const float diff_counts = (float)left_counts - (float)right_counts;
     state_.x_speed_mps = average_counts * wheel_circ_m * BALANCE_CONTROL_FREQUENCY_HZ /
                          BALANCE_ENCODER_COUNTS_PER_REV;
-    state_.x_pose_m += state_.x_speed_mps * BALANCE_SAMPLE_PERIOD_S;
+    const bool motion_target_active = (target_speed_mps_ != 0.0f) ||
+                                      (target_yaw_rate_rads_ != 0.0f);
+    if (motion_target_active) {
+        state_.x_pose_m = 0.0f;
+    } else {
+        state_.x_pose_m += state_.x_speed_mps * BALANCE_SAMPLE_PERIOD_S;
+    }
 
     state_.angle_rad = pitch_rad;
     state_.angle_rate_rads = (pitch_rad - last_pitch_rad_) * BALANCE_CONTROL_FREQUENCY_HZ;
@@ -47,7 +53,11 @@ LqrState LqrController::update(int16_t left_counts, int16_t right_counts, float 
 
     state_.yaw_rate_rads = diff_counts * wheel_circ_m * BALANCE_CONTROL_FREQUENCY_HZ /
                            (BALANCE_ENCODER_COUNTS_PER_REV * track_m);
-    state_.yaw_rad += state_.yaw_rate_rads * BALANCE_SAMPLE_PERIOD_S;
+    if (target_yaw_rate_rads_ != 0.0f) {
+        state_.yaw_rad = 0.0f;
+    } else {
+        state_.yaw_rad += state_.yaw_rate_rads * BALANCE_SAMPLE_PERIOD_S;
+    }
 
     state_.left_accel = -(BALANCE_LQR_K1 * state_.x_pose_m +
                           BALANCE_LQR_K2 * (state_.x_speed_mps - target_speed_mps_) +

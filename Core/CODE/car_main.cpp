@@ -21,8 +21,8 @@
 #define CAR_APP_ENABLE_ENCODER     1
 #define CAR_APP_ENABLE_MOTOR       1
 #define CAR_APP_ENABLE_MOTOR_TEST  0
-#define CAR_APP_ENABLE_ULTRASONIC  0
-#define CAR_APP_ENABLE_REMOTE      0
+#define CAR_APP_ENABLE_ULTRASONIC  1
+#define CAR_APP_ENABLE_REMOTE      1
 #define CAR_APP_ENABLE_CONTROLLER  1
 
 #define CAR_APP_MOTOR_TEST_PWM     1000
@@ -140,6 +140,8 @@ void updateStandaloneData(AppRuntime &app)
 #if CAR_APP_ENABLE_ULTRASONIC
     if (car::app_scheduler.takeUltrasonicTick()) {
         car::ultrasonic.trigger();
+        app.ui.ultrasonic_mm = car::ultrasonic.distanceMm();
+        app.ui.ultrasonic_valid = car::ultrasonic.hasFreshDistance(now);
         app.last_ultrasonic_ms = now;
     }
 #endif
@@ -158,6 +160,9 @@ void updateControllerData(AppRuntime &app)
     app.ui.pwm_right = s.pwm_right;
     app.ui.encoder_left = s.encoder_left;
     app.ui.encoder_right = s.encoder_right;
+    app.ui.ultrasonic_mm = s.ultrasonic_mm;
+    app.ui.ultrasonic_valid = s.ultrasonic_valid;
+    app.ui.mode = (uint8_t)s.mode;
 #else
     updateStandaloneData(app);
 #endif

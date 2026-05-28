@@ -76,6 +76,30 @@ void showRunState(u8 x, u8 y, bool enabled)
     OLED_ShowString(x, y, enabled ? "ON " : "OFF");
 }
 
+void showMode(u8 x, u8 y, uint8_t mode)
+{
+    if (mode == 1U) {
+        OLED_ShowString(x, y, "AVD");
+    } else if (mode == 2U) {
+        OLED_ShowString(x, y, "FOL");
+    } else {
+        OLED_ShowString(x, y, "NOR");
+    }
+}
+
+void showDistance(u8 x, u8 y, uint16_t mm, bool valid)
+{
+    OLED_ShowString(x, y, "D");
+    if (!valid) {
+        OLED_ShowString((u8)(x + 10U), y, "----");
+        return;
+    }
+    if (mm > 9999U) {
+        mm = 9999U;
+    }
+    OLED_ShowNumber((u8)(x + 10U), y, mm, 4, 12);
+}
+
 void showMpuState(u8 x, u8 y, bool ok)
 {
     OLED_ShowString(x, y, ok ? "MPU" : "---");
@@ -234,8 +258,8 @@ void OledUiDemo::render(const OledUiData &data)
     drawAttitudeIcon(112, 27, data.pitch_deg_x10, frame_);
 
     OLED_ShowString(4, 29, "STA");
-    OLED_ShowString(32, 29, data.enabled ? "RUN " : "STOP");
-    showDots(68, 29, frame_);
+    showMode(32, 29, data.mode);
+    showDistance(64, 29, data.ultrasonic_mm, data.ultrasonic_valid);
     // drawPulse(94, 34, frame_);
 
     OLED_ShowString(4, 42, "PWM");

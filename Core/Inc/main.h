@@ -67,8 +67,13 @@ void Error_Handler(void);
 #define User_key_GPIO_Port GPIOA
 #define UltrasonicCapture_Pin GPIO_PIN_0
 #define UltrasonicCapture_GPIO_Port GPIOB
+#define UltrasonicCaptureAlt_Pin GPIO_PIN_1
+#define UltrasonicCaptureAlt_GPIO_Port GPIOA
+#define UltrasonicCaptureAlt_EXTI_IRQn EXTI1_IRQn
 #define Trigger_Pin GPIO_PIN_1
 #define Trigger_GPIO_Port GPIOB
+#define TriggerAlt_Pin GPIO_PIN_3
+#define TriggerAlt_GPIO_Port GPIOA
 #define BIN2_Pin GPIO_PIN_12
 #define BIN2_GPIO_Port GPIOB
 #define BIN1_Pin GPIO_PIN_13
