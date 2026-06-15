@@ -10,10 +10,11 @@ RemoteControl remote;
 void RemoteControl::init()
 {
     fast_mode_ = false;
-    HAL_UART_Receive_IT(&huart3, &rx_byte_, 1U);
+    HAL_UART_Receive_IT(&huart1, &voice_rx_byte_, 1U);
+    HAL_UART_Receive_IT(&huart3, &bluetooth_rx_byte_, 1U);
 }
 
-void RemoteControl::onByte(uint8_t byte)
+bool RemoteControl::handleMotionAndSpeedCommand(uint8_t byte)
 {
     const float speed = fast_mode_ ? BALANCE_REMOTE_SPEED_FAST_MPS : BALANCE_REMOTE_SPEED_SLOW_MPS;
     const float yaw = (fast_mode_ ? BALANCE_REMOTE_YAW_FAST_RADS : BALANCE_REMOTE_YAW_SLOW_RADS) *
@@ -21,30 +22,12 @@ void RemoteControl::onByte(uint8_t byte)
 
     if (isFastCommand(byte)) {
         fast_mode_ = true;
-        return;
+        return true;
     }
     if (isSlowCommand(byte)) {
         fast_mode_ = false;
-        return;
+        return true;
     }
-
-    if (isNormalModeCommand(byte)) {
-        controller.setMode(BalanceMode::normal);
-        return;
-    }
-    if (isAvoidModeCommand(byte)) {
-        controller.setMode(BalanceMode::ultrasonicAvoid);
-        return;
-    }
-    if (isFollowModeCommand(byte)) {
-        controller.setMode(BalanceMode::ultrasonicFollow);
-        return;
-    }
-    if (isCycleModeCommand(byte)) {
-        controller.cycleMode();
-        return;
-    }
-
     if (isStopCommand(byte)) {
         controller.setRemoteTarget(0.0f, 0.0f, byte);
     } else if (isForwardCommand(byte)) {
@@ -56,8 +39,42 @@ void RemoteControl::onByte(uint8_t byte)
     } else if (isLeftCommand(byte)) {
         controller.setRemoteTarget(0.0f, -yaw, byte);
     } else {
+        return false;
+    }
+    return true;
+}
+
+void RemoteControl::onBluetoothByte(uint8_t byte)
+{
+    if (handleMotionAndSpeedCommand(byte)) {
+        return;
+    }
+    if (isNormalModeCommand(byte)) {
+        controller.setMode(BalanceMode::normal);
+    } else if (isAvoidModeCommand(byte)) {
+        controller.setMode(BalanceMode::ultrasonicAvoid);
+    } else if (isFollowModeCommand(byte)) {
+        controller.setMode(BalanceMode::ultrasonicFollow);
+    } else if (isCycleModeCommand(byte)) {
+        controller.cycleMode();
+    } else {
+        // Preserve the existing Bluetooth behavior for unsupported bytes.
         controller.setRemoteTarget(0.0f, 0.0f, byte);
     }
+}
+
+void RemoteControl::onVoiceByte(uint8_t byte)
+{
+    if (!isVoiceCommand(byte)) {
+        return;
+    }
+    handleMotionAndSpeedCommand(byte);
+}
+
+bool RemoteControl::isVoiceCommand(uint8_t byte)
+{
+    return (byte == 'A') || (byte == 'E') || (byte == 'B') || (byte == 'F') ||
+           (byte == 'Z') || (byte == 'X') || (byte == 'Y');
 }
 
 bool RemoteControl::isFastCommand(uint8_t byte)
@@ -121,9 +138,12 @@ bool RemoteControl::isCycleModeCommand(uint8_t byte)
 
 void RemoteControl::onRxComplete(UART_HandleTypeDef *huart)
 {
-    if (huart->Instance == USART3) {
-        onByte(rx_byte_);
-        HAL_UART_Receive_IT(&huart3, &rx_byte_, 1U);
+    if (huart->Instance == USART1) {
+        onVoiceByte(voice_rx_byte_);
+        HAL_UART_Receive_IT(&huart1, &voice_rx_byte_, 1U);
+    } else if (huart->Instance == USART3) {
+        onBluetoothByte(bluetooth_rx_byte_);
+        HAL_UART_Receive_IT(&huart3, &bluetooth_rx_byte_, 1U);
     }
 }
 
