@@ -10,7 +10,10 @@ RemoteControl remote;
 void RemoteControl::init()
 {
     fast_mode_ = false;
-    HAL_UART_Receive_IT(&huart3, &rx_byte_, 1U);
+    HAL_NVIC_SetPriority(USART1_IRQn, 1U, 2U);
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
+    HAL_UART_Receive_IT(&huart1, &host_rx_byte_, 1U);
+    HAL_UART_Receive_IT(&huart3, &bluetooth_rx_byte_, 1U);
 }
 
 void RemoteControl::onByte(uint8_t byte)
@@ -121,9 +124,12 @@ bool RemoteControl::isCycleModeCommand(uint8_t byte)
 
 void RemoteControl::onRxComplete(UART_HandleTypeDef *huart)
 {
-    if (huart->Instance == USART3) {
-        onByte(rx_byte_);
-        HAL_UART_Receive_IT(&huart3, &rx_byte_, 1U);
+    if (huart->Instance == USART1) {
+        onByte(host_rx_byte_);
+        HAL_UART_Receive_IT(&huart1, &host_rx_byte_, 1U);
+    } else if (huart->Instance == USART3) {
+        onByte(bluetooth_rx_byte_);
+        HAL_UART_Receive_IT(&huart3, &bluetooth_rx_byte_, 1U);
     }
 }
 
@@ -132,4 +138,9 @@ void RemoteControl::onRxComplete(UART_HandleTypeDef *huart)
 extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     car::remote.onRxComplete(huart);
+}
+
+extern "C" void USART1_IRQHandler(void)
+{
+    HAL_UART_IRQHandler(&huart1);
 }

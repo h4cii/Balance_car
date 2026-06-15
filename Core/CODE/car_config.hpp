@@ -23,14 +23,14 @@
 // #define BALANCE_LQR_K2                (-113.9570f)
 // #define BALANCE_LQR_K3                (-357.2249f)
 // #define BALANCE_LQR_K4                (-33.3211f)
-#define BALANCE_LQR_K1                (-200.0f)
-#define BALANCE_LQR_K2                (-120.9570f)
-#define BALANCE_LQR_K3                (-420.2249f)
-#define BALANCE_LQR_K4                (-45.3211f)
+#define BALANCE_LQR_K1                (-230.0f)
+#define BALANCE_LQR_K2                (-180.0f)
+#define BALANCE_LQR_K3                (-530.0f)
+#define BALANCE_LQR_K4                (-42.9f)
 #define BALANCE_LQR_K5                 22.3607f
 #define BALANCE_LQR_K6                 22.8301f
 // #define BALANCE_TARGET_ANGLE_RAD       0.0349
-#define BALANCE_TARGET_ANGLE_RAD       0.050f
+#define BALANCE_TARGET_ANGLE_RAD       0.0495f
 #define BALANCE_RATIO_ACCEL            5948.0f
 
 /* Reference car uses a 12 V battery divided by 11 before ADC. */
@@ -47,8 +47,8 @@
 #define BALANCE_LEFT_MOTOR_SIGN        (-1)
 #define BALANCE_RIGHT_MOTOR_SIGN       (-1)
 
-#define BALANCE_REMOTE_SPEED_SLOW_MPS  0.6f
-#define BALANCE_REMOTE_SPEED_FAST_MPS  1.0f
+#define BALANCE_REMOTE_SPEED_SLOW_MPS  0.2f
+#define BALANCE_REMOTE_SPEED_FAST_MPS  0.5f
 #define BALANCE_REMOTE_YAW_SLOW_RADS   4.0f
 #define BALANCE_REMOTE_YAW_FAST_RADS   8.0f
 #define BALANCE_REMOTE_YAW_SIGN        (-1.0f)

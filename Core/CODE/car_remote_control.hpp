@@ -26,7 +26,8 @@ private:
     static bool isFollowModeCommand(uint8_t byte);
     static bool isCycleModeCommand(uint8_t byte);
 
-    uint8_t rx_byte_ = 0U;
+    uint8_t host_rx_byte_ = 0U;
+    uint8_t bluetooth_rx_byte_ = 0U;
     bool fast_mode_ = false;
 };
 
